@@ -1,52 +1,56 @@
-# .github/workflows/build-gcc-docset.yml
-name: Build GCC DocSet
+name: Build Multi-Module DocSet
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
 
-env:
-  VERSION: '12.2.0'
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DOC_ROOT: docs/html
+      DOCSET_NAME: "GCC Manual"
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Cache npm
-      uses: actions/cache@v3
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+      - name: Cache npm
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '16'
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
 
-    - name: Extract pre-downloaded HTML
-      run: |
-        mkdir -p gcc-${{ env.VERSION }}/html
-        tar -xzf docs/html-archives/gcc-${{ env.VERSION }}-html.tar.gz \
-          -C gcc-${{ env.VERSION }}/html
+      - name: Extract all HTML modules
+        run: |
+          mkdir -p $DOC_ROOT
+          for archive in docs/html-archives/*.tar.gz docs/html-archives/*.gz; do
+            [ -f "$archive" ] || continue
+            module=$(basename "$archive" .tar.gz)
+            module=$(basename "$module" .gz)
+            mkdir -p "$DOC_ROOT/$module"
+            tar -xzf "$archive" -C "$DOC_ROOT/$module"
+          done
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Generate DocSet
-      run: npm run build:docset
+      - name: Generate DocSet
+        run: npm run build:docset
 
-    - name: Zip DocSet
-      run: |
-        cd output
-        zip -r "GCC-${{ env.VERSION }}.docset.zip" "GCC ${{ env.VERSION }}.docset"
+      - name: Zip DocSet
+        run: |
+          cd output
+          zip -r "${DOCSET_NAME}.docset.zip" "${DOCSET_NAME}.docset"
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: gcc-docset-${{ github.ref_name }}
-        path: output/GCC-*.docset.zip
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: multi-module-docset
+          path: output/*.zip
 

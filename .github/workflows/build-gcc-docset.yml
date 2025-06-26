@@ -1,9 +1,13 @@
+# .github/workflows/build-gcc-docset.yml
 name: Build GCC DocSet
 
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+
+env:
+  VERSION: '12.2.0'
 
 jobs:
   build:
@@ -23,16 +27,13 @@ jobs:
       with:
         node-version: '16'
 
-    - name: Mirror GCC HTML docs
+    - name: Extract pre-downloaded HTML
       run: |
-        version=12.2.0
-        wget -r -np -nH \
-          --cut-dirs=2 \
-          -R "index.html*" \
-          -P gcc-${version}/html \
-          https://gcc.gnu.org/onlinedocs/gcc-${version}/
+        mkdir -p gcc-${{ env.VERSION }}/html
+        tar -xzf docs/html-archives/gcc-${{ env.VERSION }}-html.tar.gz \
+          -C gcc-${{ env.VERSION }}/html
 
-    - name: Install deps
+    - name: Install dependencies
       run: npm ci
 
     - name: Generate DocSet
@@ -41,11 +42,11 @@ jobs:
     - name: Zip DocSet
       run: |
         cd output
-        zip -r "GCC-${version}.docset.zip" "GCC ${version}.docset"
+        zip -r "GCC-${{ env.VERSION }}.docset.zip" "GCC ${{ env.VERSION }}.docset"
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: gcc-docset-${{ github.ref_name }}
         path: output/GCC-*.docset.zip
- 
+

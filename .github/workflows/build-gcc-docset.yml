@@ -1,0 +1,52 @@
+name: Build GCC DocSet
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Cache npm modules
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+        restore-keys: ${{ runner.os }}-node-
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+
+    - name: Download GCC doc tarball & extract
+      run: |
+        version=12.2.0
+        url=https://ftpmirror.gnu.org/gcc/gcc-${version}/gcc-${version}-doc.tar.gz
+        wget -O gcc-doc.tar.gz "$url"
+        mkdir gcc-${version}
+        tar -xzf gcc-doc.tar.gz -C gcc-${version}
+
+    - name: Install npm deps
+      run: npm ci
+
+    - name: Generate `.docset`
+      run: npm run build:docset
+
+    - name: Zip the DocSet
+      run: |
+        cd output
+        zip -r "GCC-${version}.docset.zip" "GCC ${version}.docset"
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: gcc-docset-${{ github.ref_name }}
+        path: output/GCC-*.docset.zip
+

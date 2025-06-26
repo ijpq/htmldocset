@@ -1,0 +1,12 @@
+{
+  "name": "gcc-docset",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "docset-generator": "^1.0.0"
+  },
+  "scripts": {
+    "build:docset": "node index.js"
+  }
+}
+
